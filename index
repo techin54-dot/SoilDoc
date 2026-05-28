@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f5132" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>SoilDoc - คำนวณปรับปรุงดินกรด</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root{
+      --green:#0f5132;
+      --green-2:#10b981;
+      --mint:#ecfdf5;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --line:#e2e8f0;
+      --safe-top:env(safe-area-inset-top);
+      --safe-bottom:env(safe-area-inset-bottom);
+    }
+
+    *{
+      box-sizing:border-box;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    html{
+      min-height:100%;
+      -webkit-text-size-adjust:100%;
+      text-size-adjust:100%;
+      scroll-behavior:smooth;
+    }
+
+    body{
+      min-height:100dvh;
+      margin:0;
+      font-family:'Prompt',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(circle at top left,rgba(16,185,129,.18),transparent 32rem),
+        radial-gradient(circle at bottom right,rgba(245,158,11,.14),transparent 30rem),
+        linear-gradient(180deg,#f8fafc 0%,#eef4f0 100%);
+      overscroll-behavior-y:none;
+    }
+
+    button,
+    input,
+    textarea,
+    select{
+      font-family:inherit;
+      font-size:16px;
+    }
+
+    button{
+      min-height:44px;
+      touch-action:manipulation;
+    }
+
+    input,
+    textarea{
+      -webkit-appearance:none;
+      appearance:none;
+    }
+
+    input[type="range"]{
+      -webkit-appearance:none;
+      appearance:none;
+      height:30px;
+      background:transparent;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track{
+      height:8px;
+      border-radius:999px;
+      background:linear-gradient(90deg,#ef4444 0%,#f59e0b 38%,#10b981 63%,#3b82f6 100%);
+      box-shadow:inset 0 1px 2px rgba(0,0,0,.12);
+    }
+
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width:24px;
+      height:24px;
+      margin-top:-8px;
+      border-radius:50%;
+      background:#ffffff;
+      border:4px solid #0f5132;
+      box-shadow:0 5px 14px rgba(15,81,50,.28);
+    }
+
+    input[type="range"]::-moz-range-track{
+      height:8px;
+      border-radius:999px;
+      background:linear-gradient(90deg,#ef4444 0%,#f59e0b 38%,#10b981 63%,#3b82f6 100%);
+    }
+
+    input[type="range"]::-moz-range-thumb{
+      width:20px;
+      height:20px;
+      border-radius:50%;
+      background:#ffffff;
+      border:4px solid #0f5132;
+      box-shadow:0 5px 14px rgba(15,81,50,.28);
+    }
+
+    .app-shell{
+      padding-bottom:calc(1.25rem + var(--safe-bottom));
+    }
+
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:40;
+      padding-top:var(--safe-top);
+      background:linear-gradient(135deg,#064e3b 0%,#0f5132 52%,#116149 100%);
+      box-shadow:0 12px 28px rgba(15,81,50,.22);
+    }
+
+    .glass-card{
+      background:rgba(255,255,255,.92);
+      border:1px solid rgba(226,232,240,.86);
+      box-shadow:0 18px 45px rgba(15,23,42,.06);
+      backdrop-filter:blur(18px);
+      -webkit-backdrop-filter:blur(18px);
+    }
+
+    .soft-card{
+      background:#ffffff;
+      border:1px solid rgba(226,232,240,.94);
+      box-shadow:0 12px 30px rgba(15,23,42,.055);
+    }
+
+    .field-input{
+      width:100%;
+      min-height:46px;
+      border:1px solid #dbe3ed;
+      border-radius:16px;
+      background:#ffffff;
+      color:#0f172a;
+      outline:none;
+      padding:.72rem .88rem;
+      transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease;
+    }
+
+    .field-input:focus{
+      border-color:#10b981;
+      box-shadow:0 0 0 4px rgba(16,185,129,.16);
+      background:#fbfffd;
+    }
+
+    .small-label{
+      display:block;
+      font-size:.76rem;
+      font-weight:600;
+      color:#64748b;
+      margin-bottom:.42rem;
+    }
+
+    .soil-card-active,
+    .mat-card-active{
+      border-color:#10b981!important;
+      background:#ecfdf5!important;
+      color:#065f46!important;
+      box-shadow:0 10px 24px rgba(16,185,129,.15)!important;
+    }
+
+    .choice-card{
+      min-height:76px;
+      border:1px solid #e2e8f0;
+      border-radius:18px;
+      background:#ffffff;
+      transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background-color .16s ease;
+    }
+
+    .choice-card:hover{
+      transform:translateY(-1px);
+      box-shadow:0 12px 26px rgba(15,23,42,.07);
+    }
+
+    .result-card{
+      position:relative;
+      overflow:hidden;
+    }
+
+    .result-card::before{
+      content:"";
+      position:absolute;
+      inset:0 0 auto 0;
+      height:4px;
+      background:linear-gradient(90deg,#10b981,#34d399,#f59e0b);
+    }
+
+    .chart-box{
+      height:260px;
+    }
+
+    .mobile-table{
+      -webkit-overflow-scrolling:touch;
+    }
+
+    .print-only{
+      display:none;
+    }
+
+    @media(max-width:640px){
+      .app-shell{
+        padding-left:.75rem;
+        padding-right:.75rem;
+      }
+      .topbar-title{
+        font-size:1.12rem;
+      }
+      .chart-box{
+        height:230px;
+      }
+      .soft-card,
+      .glass-card{
+        border-radius:1.15rem!important;
+      }
+    }
+
+    @media(print){
+      body{
+        background:#fff!important;
+      }
+      .topbar,
+      .no-print,
+      button,
+      input,
+      textarea{
+        display:none!important;
+      }
+      main{
+        display:block!important;
+        max-width:100%!important;
+        padding:0!important;
+      }
+      .soft-card,.glass-card{
+        box-shadow:none!important;
+        break-inside:avoid;
+        border:1px solid #cbd5e1!important;
+        margin-bottom:12px;
+      }
+      .print-only{
+        display:block!important;
+      }
+    }
+  </style>
+</head>
+
+<body class="antialiased selection:bg-emerald-500 selection:text-white">
+  <nav class="topbar text-white px-4 sm:px-6 py-3.5">
+    <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="bg-white text-[#0f5132] px-3 py-2 rounded-2xl font-bold topbar-title text-xl tracking-tight flex items-center gap-2 shadow-inner whitespace-nowrap">
+          <span>🌱 SoilDoc</span>
+          <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">TH v2.0</span>
+        </div>
+        <div class="hidden lg:block text-xs text-emerald-100/90 border-l border-emerald-300/30 pl-3 leading-relaxed">
+          แดชบอร์ดคำนวณวัสดุปรับปรุงดินกรด พร้อมงบประมาณและรายงานสรุป
+        </div>
+      </div>
+
+      <div class="no-print flex w-full md:w-auto items-center gap-2 overflow-x-auto pb-0.5 md:pb-0">
+        <button onclick="window.print()" class="shrink-0 bg-white/12 hover:bg-white/20 text-white text-sm font-medium py-2 px-4 rounded-2xl border border-white/15 transition-all flex items-center gap-2">
+          🖨️ พิมพ์รายงาน
+        </button>
+        <button onclick="resetAllData()" class="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium py-2 px-4 rounded-2xl shadow-sm transition-all">
+          🔄 เริ่มคำนวณใหม่
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="app-shell max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 xl:grid-cols-3 gap-5 lg:gap-6">
+    <section class="xl:col-span-1 space-y-5 lg:space-y-6">
+      <div class="glass-card rounded-3xl p-4 sm:p-5">
+        <h2 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <span class="bg-emerald-100 text-emerald-800 text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">1</span>
+          ข้อมูลแปลงและเนื้อดิน
+        </h2>
+
+        <div class="space-y-4">
+          <div>
+            <label class="small-label">ชื่อแปลง / ผู้ใช้</label>
+            <input type="text" id="plot_name" placeholder="เช่น แปลงผักอินทรีย์โซน A" class="field-input">
+          </div>
+
+          <div>
+            <label class="small-label">ขนาดพื้นที่เพาะปลูก</label>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <input type="number" inputmode="decimal" id="area_rai" min="0" placeholder="0" oninput="calculateTotalRai()" class="field-input text-center px-2">
+                <span class="text-[11px] text-center block text-slate-400 mt-1">ไร่</span>
+              </div>
+              <div>
+                <input type="number" inputmode="decimal" id="area_ngan" min="0" max="3" placeholder="0" oninput="calculateTotalRai()" class="field-input text-center px-2">
+                <span class="text-[11px] text-center block text-slate-400 mt-1">งาน</span>
+              </div>
+              <div>
+                <input type="number" inputmode="decimal" id="area_wa" min="0" max="399" placeholder="0" oninput="calculateTotalRai()" class="field-input text-center px-2">
+                <span class="text-[11px] text-center block text-slate-400 mt-1">ตร.วา</span>
+              </div>
+            </div>
+            <div class="mt-2 bg-emerald-50 text-emerald-700 rounded-2xl px-3 py-2 text-sm font-semibold text-right">
+              รวมพื้นที่ <span id="total_rai_txt">0.00</span> ไร่
+            </div>
+          </div>
+
+          <div>
+            <label class="small-label">ชนิดหรือเนื้อดินในพื้นที่</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" id="btn_soil_sand" onclick="setSoilType(150, 'btn_soil_sand')" class="soil-btn choice-card p-3 text-center flex flex-col items-center justify-center gap-1.5 text-xs">
+                <span class="text-xl">⏳</span><span class="font-semibold">ดินทราย</span>
+              </button>
+              <button type="button" id="btn_soil_loam" onclick="setSoilType(250, 'btn_soil_loam')" class="soil-btn choice-card p-3 text-center flex flex-col items-center justify-center gap-1.5 text-xs">
+                <span class="text-xl">🌾</span><span class="font-semibold">ดินร่วน</span>
+              </button>
+              <button type="button" id="btn_soil_clay" onclick="setSoilType(400, 'btn_soil_clay')" class="soil-btn choice-card p-3 text-center flex flex-col items-center justify-center gap-1.5 text-xs">
+                <span class="text-xl">🍯</span><span class="font-semibold">ดินเหนียว</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-3xl p-4 sm:p-5">
+        <h2 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <span class="bg-emerald-100 text-emerald-800 text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">2</span>
+          ระดับความเป็นกรด-ด่าง
+        </h2>
+        <div class="space-y-5">
+          <div>
+            <div class="flex justify-between items-center gap-2 mb-2">
+              <label class="text-sm font-semibold text-slate-600">ค่า pH ที่วัดได้จริง</label>
+              <span id="badge_ph" class="text-xs bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-full">ระบุค่า</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <input type="range" id="input_current_ph" min="3.5" max="8.5" step="0.1" value="4.5" oninput="updatePhLabels()" class="w-full">
+              <span id="txt_current_ph" class="text-base font-bold border border-slate-200 bg-slate-50 px-3 py-2 rounded-2xl w-16 text-center">4.5</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-sm font-semibold text-slate-600 mb-2 block">ค่า pH เป้าหมาย <span class="text-xs font-normal text-slate-400">แนะนำ 6.0 - 6.5</span></label>
+            <div class="flex items-center gap-3">
+              <input type="range" id="input_target_ph" min="5.5" max="7.5" step="0.1" value="6.5" oninput="updatePhLabels()" class="w-full">
+              <span id="txt_target_ph" class="text-base font-bold border border-slate-200 bg-slate-50 px-3 py-2 rounded-2xl w-16 text-center">6.5</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-3xl p-4 sm:p-5">
+        <h2 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <span class="bg-emerald-100 text-emerald-800 text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">3</span>
+          สารปรับสภาพและงบประมาณ
+        </h2>
+        <div class="space-y-4">
+          <div>
+            <label class="small-label">ชนิดสารปรับปรุงสภาพดินที่จะใช้</label>
+            <input type="hidden" id="select_material" value="109">
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" id="btn_mat_109" onclick="setMaterialType(109, 'btn_mat_109')" class="mat-btn choice-card p-3 text-center flex items-center justify-center text-xs font-semibold">🪨 โดโลไมท์</button>
+              <button type="button" id="btn_mat_179" onclick="setMaterialType(179, 'btn_mat_179')" class="mat-btn choice-card p-3 text-center flex items-center justify-center text-xs font-semibold">💨 ปูนขาว</button>
+              <button type="button" id="btn_mat_100" onclick="setMaterialType(100, 'btn_mat_100')" class="mat-btn choice-card p-3 text-center flex items-center justify-center text-xs font-semibold">🧱 หินปูนบด</button>
+              <button type="button" id="btn_mat_80" onclick="setMaterialType(80, 'btn_mat_80')" class="mat-btn choice-card p-3 text-center flex items-center justify-center text-xs font-semibold">🐚 ปูนมาร์ล</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="small-label">ขนาดกระสอบ (กก.)</label>
+              <input type="number" inputmode="decimal" id="bag_weight" value="50" oninput="calculateAll()" class="field-input text-center font-semibold">
+            </div>
+            <div>
+              <label class="small-label">ราคาต่อกระสอบ (บาท)</label>
+              <input type="number" inputmode="decimal" id="bag_price" value="180" oninput="calculateAll()" class="field-input text-center font-semibold">
+            </div>
+          </div>
+
+          <button type="button" onclick="saveToHistory()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm py-3 px-4 rounded-2xl shadow-lg shadow-emerald-200/60 transition-all flex items-center justify-center gap-2">
+            📥 บันทึกข้อมูลแปลงนี้ลงประวัติ
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="xl:col-span-2 space-y-5 lg:space-y-6">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div class="soft-card result-card rounded-3xl p-4">
+          <span class="text-[11px] uppercase font-bold text-slate-400 block mb-1">สถานภาพ pH</span>
+          <div id="res_status_title" class="text-base font-bold text-red-600">กรดจัดมาก</div>
+          <div id="res_status_sub" class="text-[11px] text-slate-400 mt-1 leading-tight">ฟอสฟอรัสถูกขัดขวาง</div>
+        </div>
+        <div class="soft-card result-card rounded-3xl p-4">
+          <span class="text-[11px] uppercase font-bold text-slate-400 block mb-1">ปริมาณที่แนะนำ</span>
+          <div class="text-xl font-bold text-emerald-600"><span id="res_total_weight">0</span> <span class="text-xs font-normal text-slate-400">กก.</span></div>
+          <div class="text-[11px] text-slate-400 mt-1"><span id="res_weight_per_rai">0</span> กก. / ไร่</div>
+        </div>
+        <div class="soft-card result-card rounded-3xl p-4">
+          <span class="text-[11px] uppercase font-bold text-slate-400 block mb-1">จำนวนกระสอบ</span>
+          <div class="text-xl font-bold text-amber-600"><span id="res_total_bags">0</span> <span class="text-xs font-normal text-slate-400">กระสอบ</span></div>
+          <div class="text-[11px] text-slate-400 mt-1">กระสอบละ <span id="res_bag_w_info">50</span> กก.</div>
+        </div>
+        <div class="soft-card result-card rounded-3xl p-4">
+          <span class="text-[11px] uppercase font-bold text-slate-400 block mb-1">งบประมาณ</span>
+          <div class="text-xl font-bold text-blue-600"><span id="res_total_cost">0</span> <span class="text-xs font-normal text-slate-400">บาท</span></div>
+          <div class="text-[11px] text-slate-400 mt-1">@ <span id="res_price_info">180</span> บาท / กระสอบ</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6">
+        <div class="soft-card rounded-3xl p-4 sm:p-5 lg:col-span-2">
+          <h3 class="text-sm font-bold text-slate-500 mb-3">📊 เปรียบเทียบปริมาณสารปรับสภาพตามชนิดเนื้อดิน</h3>
+          <div class="chart-box relative">
+            <canvas id="soilCompareChart"></canvas>
+          </div>
+        </div>
+
+        <div class="soft-card rounded-3xl p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-slate-500 mb-3">🧭 มาตรวัดความเปรี้ยว - หวาน</h3>
+            <div class="w-full h-4 rounded-full overflow-hidden flex text-[9px] text-center font-bold text-white mb-3 shadow-inner">
+              <div class="w-[30%] bg-red-500 flex items-center justify-center">กรด</div>
+              <div class="w-[40%] bg-emerald-500 flex items-center justify-center">กลาง</div>
+              <div class="w-[30%] bg-blue-500 flex items-center justify-center">ด่าง</div>
+            </div>
+            <div class="grid grid-cols-3 gap-1 text-[10px] text-center mb-4">
+              <div id="gauge_acid" class="p-2 rounded-xl bg-slate-50 text-slate-400">กรด<br><span class="text-[9px]">เติมปูน</span></div>
+              <div id="gauge_normal" class="p-2 rounded-xl bg-slate-50 text-slate-400">กลาง<br><span class="text-[9px]">เหมาะสม</span></div>
+              <div id="gauge_alkali" class="p-2 rounded-xl bg-slate-50 text-slate-400">ด่าง<br><span class="text-[9px]">ระวัง</span></div>
+            </div>
+          </div>
+          <div class="border-t border-dashed border-slate-200 pt-4 flex items-center gap-3">
+            <div class="text-3xl" id="evaluation_emoji">🤢</div>
+            <div class="text-xs leading-relaxed">
+              <span class="font-bold text-slate-700 block">ผลประเมินปฏิกิริยาดิน</span>
+              <span id="evaluation_text" class="text-slate-500">กรุณากรอกข้อมูลเพื่อประมวลผล</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="soft-card rounded-3xl p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div class="lg:col-span-2 space-y-3">
+          <h3 class="text-base font-semibold text-slate-800 flex items-center gap-2">🎓 คำแนะนำทางวิชาการและการปฏิบัติ</h3>
+          <ol class="text-sm text-slate-600 space-y-2 list-decimal pl-4 leading-relaxed">
+            <li><strong>ไถตากดินล่วงหน้า:</strong> ไถพลิกหน้าดินตากแดดไว้ประมาณ 5-7 วัน เพื่อช่วยลดปัญหาเชื้อโรคและก๊าซสะสม</li>
+            <li><strong>หว่านและคลุกเคล้า:</strong> หว่านวัสดุปรับปรุงดินให้ทั่วแปลง แล้วไถพรวนคลุกเคล้าลึกประมาณ 15 ซม. ขณะดินมีความชื้นพอเหมาะ</li>
+            <li><strong>บ่มดิน 15-30 วัน:</strong> ทิ้งช่วงให้วัสดุทำปฏิกิริยากับดินก่อนปลูกพืช เพื่อให้การปรับ pH มีประสิทธิภาพมากขึ้น</li>
+          </ol>
+        </div>
+        <div class="bg-amber-50 rounded-2xl p-4 border border-amber-200 text-amber-900 text-sm leading-relaxed space-y-1">
+          <div class="font-semibold text-amber-800 flex items-center gap-1">⚠️ ข้อควรระวัง</div>
+          <p>ไม่ควรหว่านปูนพร้อมปุ๋ยไนโตรเจนกลุ่มยูเรีย เพราะอาจเพิ่มการสูญเสียไนโตรเจนในรูปแอมโมเนีย ควรเว้นระยะก่อนใส่ปุ๋ยตามความเหมาะสม</p>
+          <p class="text-[10px] text-amber-600/80 text-right mt-1">อ้างอิงแนวทางทั่วไปด้านการจัดการดินกรด</p>
+        </div>
+      </div>
+
+      <div class="soft-card rounded-3xl p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-3">
+          <h3 class="text-base font-semibold text-slate-800 flex items-center gap-2">📁 ประวัติข้อมูลแปลง</h3>
+          <button onclick="clearHistoryTable()" class="no-print text-sm text-red-500 hover:text-red-700 transition-colors font-medium border border-red-100 rounded-2xl px-3 py-2 hover:bg-red-50">
+            🗑️ ล้างประวัติ
+          </button>
+        </div>
+        <div class="mobile-table overflow-x-auto border border-slate-100 rounded-2xl">
+          <table class="w-full text-left text-xs border-collapse min-w-[780px]">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-500">
+                <th class="p-3 font-medium">ชื่อแปลง / วันเวลา</th>
+                <th class="p-3 font-medium text-center">pH เดิม → เป้า</th>
+                <th class="p-3 font-medium text-center">พื้นที่</th>
+                <th class="p-3 font-medium">สารที่ใช้</th>
+                <th class="p-3 font-medium text-right">ปริมาณ</th>
+                <th class="p-3 font-medium text-center">กระสอบ</th>
+                <th class="p-3 font-medium text-right">รวมเงิน</th>
+                <th class="p-3 font-medium text-center no-print">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="history_tbody" class="divide-y divide-slate-100">
+              <tr id="history_empty_row">
+                <td colspan="8" class="p-8 text-center text-slate-400">
+                  <span class="block text-2xl mb-1">📂</span> ยังไม่มีประวัติบันทึกการคำนวณ
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let selectedSoilBuffer = 0;
+    let totalCalculatedRai = 0;
+    let chartInstance = null;
+    let historyData = [];
+
+    window.addEventListener('load', initializeApp);
+
+    function initializeApp(){
+      document.getElementById('plot_name').value = '';
+      document.getElementById('area_rai').value = '';
+      document.getElementById('area_ngan').value = '';
+      document.getElementById('area_wa').value = '';
+      document.getElementById('input_current_ph').value = 4.5;
+      document.getElementById('input_target_ph').value = 6.5;
+      document.getElementById('bag_weight').value = '50';
+      document.getElementById('bag_price').value = '180';
+      totalCalculatedRai = 0;
+      document.getElementById('total_rai_txt').innerText = '0.00';
+      setSoilType(250, 'btn_soil_loam');
+      setMaterialType(109, 'btn_mat_109');
+      initCompareChart();
+      updatePhLabels();
+      calculateAll();
+    }
+
+    function calculateTotalRai(){
+      const rai = safeNumber(document.getElementById('area_rai').value, 0);
+      const ngan = safeNumber(document.getElementById('area_ngan').value, 0);
+      const wa = safeNumber(document.getElementById('area_wa').value, 0);
+      totalCalculatedRai = Math.max(0, rai + (ngan / 4) + (wa / 400));
+      document.getElementById('total_rai_txt').innerText = totalCalculatedRai.toFixed(2);
+      calculateAll();
+    }
+
+    function setSoilType(bufferValue, activeBtnId){
+      selectedSoilBuffer = bufferValue;
+      document.querySelectorAll('.soil-btn').forEach(btn => btn.classList.remove('soil-card-active'));
+      document.getElementById(activeBtnId).classList.add('soil-card-active');
+      calculateAll();
+    }
+
+    function setMaterialType(cceValue, activeBtnId){
+      document.getElementById('select_material').value = cceValue;
+      document.querySelectorAll('.mat-btn').forEach(btn => btn.classList.remove('mat-card-active'));
+      document.getElementById(activeBtnId).classList.add('mat-card-active');
+      calculateAll();
+    }
+
+    function updatePhLabels(){
+      const curPh = parseFloat(document.getElementById('input_current_ph').value);
+      const tarPh = parseFloat(document.getElementById('input_target_ph').value);
+      document.getElementById('txt_current_ph').innerText = curPh.toFixed(1);
+      document.getElementById('txt_target_ph').innerText = tarPh.toFixed(1);
+      const badge = document.getElementById('badge_ph');
+      if(curPh < 5.0){
+        badge.innerText = 'กรดจัดมาก';
+        badge.className = 'text-xs bg-red-100 text-red-700 font-semibold px-2.5 py-1 rounded-full';
+      }else if(curPh < 6.0){
+        badge.innerText = 'กรดปานกลาง';
+        badge.className = 'text-xs bg-amber-100 text-amber-700 font-semibold px-2.5 py-1 rounded-full';
+      }else if(curPh <= 7.2){
+        badge.innerText = 'เป็นกลาง';
+        badge.className = 'text-xs bg-emerald-100 text-emerald-700 font-semibold px-2.5 py-1 rounded-full';
+      }else{
+        badge.innerText = 'ดินด่าง';
+        badge.className = 'text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-1 rounded-full';
+      }
+      calculateAll();
+    }
+
+    function calculateAll(){
+      const currentPh = safeNumber(document.getElementById('input_current_ph').value, 4.5);
+      const targetPh = safeNumber(document.getElementById('input_target_ph').value, 6.5);
+      const currentCce = safeNumber(document.getElementById('select_material').value, 109);
+      const rawBagWeight = safeNumber(document.getElementById('bag_weight').value, 50);
+      const rawBagPrice = safeNumber(document.getElementById('bag_price').value, 0);
+      const bagWeight = rawBagWeight > 0 ? rawBagWeight : 50;
+      const bagPrice = rawBagPrice >= 0 ? rawBagPrice : 0;
+      if(rawBagWeight <= 0) document.getElementById('bag_weight').value = bagWeight;
+      if(rawBagPrice < 0) document.getElementById('bag_price').value = bagPrice;
+      document.getElementById('res_bag_w_info').innerText = bagWeight;
+      document.getElementById('res_price_info').innerText = bagPrice;
+
+      if(currentPh >= targetPh){
+        setOutputsToZero();
+        document.getElementById('res_status_title').innerText = 'ปกติ / เป็นด่าง';
+        document.getElementById('res_status_sub').innerText = 'ไม่ต้องเติมปูนเพิ่ม';
+        document.getElementById('evaluation_emoji').innerText = '😎';
+        document.getElementById('evaluation_text').innerText = 'ดินอยู่ในช่วงที่ไม่จำเป็นต้องใช้วัสดุเพื่อลดสภาพกรดเพิ่มเติม';
+        resetGaugeHighlights();
+        document.getElementById(currentPh > 7.0 ? 'gauge_alkali' : 'gauge_normal').className = currentPh > 7.0 ? 'p-2 rounded-xl bg-blue-100 text-blue-800 font-semibold' : 'p-2 rounded-xl bg-emerald-100 text-emerald-800 font-semibold';
+        updateChartValues(0,0,0);
+        return;
+      }
+
+      const phDiff = targetPh - currentPh;
+      if(currentPh < 5.0){
+        document.getElementById('res_status_title').innerText = 'กรดจัดมาก';
+        document.getElementById('res_status_sub').innerText = 'ฟอสฟอรัสถูกขัดขวาง';
+        document.getElementById('evaluation_emoji').innerText = '🤢';
+        document.getElementById('evaluation_text').innerText = 'ดินกรดค่อนข้างจัด แนะนำปรับด้วยวัสดุปูนตามอัตราคำนวณ และควรเว้นช่วงก่อนปลูก';
+        resetGaugeHighlights();
+        document.getElementById('gauge_acid').className = 'p-2 rounded-xl bg-red-100 text-red-800 font-semibold';
+      }else{
+        document.getElementById('res_status_title').innerText = 'กรดอ่อน-ปานกลาง';
+        document.getElementById('res_status_sub').innerText = 'ควรปรับก่อนปลูก';
+        document.getElementById('evaluation_emoji').innerText = '🤨';
+        document.getElementById('evaluation_text').innerText = 'การปรับสภาพดินในช่วงนี้ช่วยเพิ่มโอกาสการดูดใช้ธาตุอาหารหลักได้ดีขึ้น';
+        resetGaugeHighlights();
+        document.getElementById('gauge_acid').className = 'p-2 rounded-xl bg-red-50 text-red-600 font-semibold';
+      }
+
+      const baseAmountPerRai = phDiff * selectedSoilBuffer;
+      const chosenMaterialFactor = 100 / currentCce;
+      const targetWeightPerRai = baseAmountPerRai * chosenMaterialFactor;
+      const grandTotalWeight = targetWeightPerRai * totalCalculatedRai;
+      const totalBags = Math.ceil(grandTotalWeight / bagWeight);
+      const totalCost = totalBags * bagPrice;
+
+      document.getElementById('res_total_weight').innerText = Math.ceil(grandTotalWeight).toLocaleString();
+      document.getElementById('res_weight_per_rai').innerText = Math.ceil(targetWeightPerRai).toLocaleString();
+      document.getElementById('res_total_bags').innerText = totalBags.toLocaleString();
+      document.getElementById('res_total_cost').innerText = totalCost.toLocaleString();
+
+      updateChartValues(
+        Math.ceil((phDiff * 150 * chosenMaterialFactor) * totalCalculatedRai),
+        Math.ceil((phDiff * 250 * chosenMaterialFactor) * totalCalculatedRai),
+        Math.ceil((phDiff * 400 * chosenMaterialFactor) * totalCalculatedRai)
+      );
+    }
+
+    function setOutputsToZero(){
+      document.getElementById('res_total_weight').innerText = '0';
+      document.getElementById('res_weight_per_rai').innerText = '0';
+      document.getElementById('res_total_bags').innerText = '0';
+      document.getElementById('res_total_cost').innerText = '0';
+    }
+
+    function resetGaugeHighlights(){
+      document.getElementById('gauge_acid').className = 'p-2 rounded-xl bg-slate-50 text-slate-400';
+      document.getElementById('gauge_normal').className = 'p-2 rounded-xl bg-slate-50 text-slate-400';
+      document.getElementById('gauge_alkali').className = 'p-2 rounded-xl bg-slate-50 text-slate-400';
+    }
+
+    function initCompareChart(){
+      const canvas = document.getElementById('soilCompareChart');
+      if(chartInstance){ chartInstance.destroy(); chartInstance = null; }
+      if(typeof Chart === 'undefined' || !canvas){
+        console.warn('Chart.js ยังไม่พร้อมใช้งานหรือไม่พบ canvas สำหรับกราฟ');
+        const chartBox = canvas ? canvas.parentElement : null;
+        if(chartBox){
+          chartBox.innerHTML = '<div class="h-full flex items-center justify-center text-center text-sm text-slate-400 bg-slate-50 rounded-2xl p-4">ไม่สามารถโหลดกราฟได้ กรุณาตรวจสอบอินเทอร์เน็ตหรือ CDN ของ Chart.js</div>';
+        }
+        return;
+      }
+      chartInstance = new Chart(canvas.getContext('2d'),{
+        type:'bar',
+        data:{
+          labels:['ดินทราย','ดินร่วน','ดินเหนียว'],
+          datasets:[{
+            label:'ปริมาณวัสดุปรับปรุงดิน (กก.)',
+            data:[0,0,0],
+            backgroundColor:['rgba(245,158,11,.2)','rgba(16,185,129,.8)','rgba(239,68,68,.2)'],
+            borderColor:['#f59e0b','#10b981','#ef4444'],
+            borderWidth:1.5,
+            borderRadius:10
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{titleFont:{family:'Prompt'},bodyFont:{family:'Prompt'}}},
+          scales:{
+            y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{font:{size:11,family:'Prompt'}}},
+            x:{grid:{display:false},ticks:{font:{size:12,weight:'bold',family:'Prompt'}}}
+          }
+        }
+      });
+    }
+
+    function updateChartValues(sand,loam,clay){
+      if(!chartInstance) return;
+      chartInstance.data.datasets[0].data = [sand,loam,clay];
+      chartInstance.data.datasets[0].backgroundColor = [
+        selectedSoilBuffer === 150 ? 'rgba(245,158,11,.82)' : 'rgba(245,158,11,.20)',
+        selectedSoilBuffer === 250 ? 'rgba(16,185,129,.82)' : 'rgba(16,185,129,.20)',
+        selectedSoilBuffer === 400 ? 'rgba(239,68,68,.82)' : 'rgba(239,68,68,.20)'
+      ];
+      chartInstance.update();
+    }
+
+    function getMaterialText(){
+      const value = document.getElementById('select_material').value;
+      if(value === '179') return 'ปูนขาว/ปูนเผา';
+      if(value === '100') return 'หินปูนบด';
+      if(value === '80') return 'ปูนมาร์ล';
+      return 'โดโลไมท์';
+    }
+
+    function saveToHistory(){
+      const plotName = document.getElementById('plot_name').value.trim() || 'ไม่ได้ระบุชื่อแปลง';
+      const netWeight = document.getElementById('res_total_weight').innerText;
+      if(totalCalculatedRai <= 0 || netWeight === '0'){
+        alert('กรุณาระบุขนาดพื้นที่และตั้งค่าช่วง pH ที่ต้องการแก้ไขก่อนบันทึกประวัติ');
+        return;
+      }
+      const now = new Date();
+      const timestamp = `${now.toLocaleDateString('th-TH')} ${now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}`;
+      historyData.push({
+        title:`${plotName} (${timestamp})`,
+        phFlow:`${parseFloat(document.getElementById('input_current_ph').value).toFixed(1)} → ${parseFloat(document.getElementById('input_target_ph').value).toFixed(1)}`,
+        areaStr:`${totalCalculatedRai.toFixed(2)} ไร่`,
+        mat:getMaterialText(),
+        weight:netWeight + ' กก.',
+        bags:document.getElementById('res_total_bags').innerText + ' กระสอบ',
+        cost:document.getElementById('res_total_cost').innerText + ' บาท'
+      });
+      renderHistoryTable();
+    }
+
+    function renderHistoryTable(){
+      const tbody = document.getElementById('history_tbody');
+      const emptyRow = document.getElementById('history_empty_row');
+      tbody.querySelectorAll('.log-row').forEach(row => row.remove());
+      if(historyData.length === 0){ emptyRow.style.display = 'table-row'; return; }
+      emptyRow.style.display = 'none';
+      historyData.forEach((item,index) => {
+        const tr = document.createElement('tr');
+        tr.className = 'log-row hover:bg-slate-50/80 transition-colors text-slate-700';
+        tr.innerHTML = `
+          <td class="p-3 font-medium text-slate-900">${item.title}</td>
+          <td class="p-3 text-center text-emerald-700 font-bold bg-emerald-50/30">${item.phFlow}</td>
+          <td class="p-3 text-center">${item.areaStr}</td>
+          <td class="p-3 text-slate-600">${item.mat}</td>
+          <td class="p-3 text-right font-bold text-slate-900">${item.weight}</td>
+          <td class="p-3 text-center">${item.bags}</td>
+          <td class="p-3 text-right font-bold text-blue-600">${item.cost}</td>
+          <td class="p-3 text-center no-print"><button onclick="deleteHistoryRow(${index})" class="text-red-500 hover:text-red-700 p-2 rounded-xl hover:bg-red-50 transition-all" title="ลบรายการนี้">🗑️</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function deleteHistoryRow(index){ historyData.splice(index,1); renderHistoryTable(); }
+    function clearHistoryTable(){ historyData = []; renderHistoryTable(); }
+    function resetAllData(){ clearHistoryTable(); initializeApp(); }
+    function safeNumber(value, fallback = 0){
+      const number = parseFloat(value);
+      return Number.isFinite(number) ? number : fallback;
+    }
+  </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f5132" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>SoilDoc - คำนวณปรับปรุงดินกรด</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root{
+      --green:#0f5132;
+      --green-2:#10b981;
+      --mint:#ecfdf5;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --line:#e2e8f0;
+      --safe-top:env(safe-area-inset-top);
+      --safe-bottom:env(safe-area-inset-bottom);
+    }
+
+    *{
+      box-sizing:border-box;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    html{
+      min-height:100%;
+      -webkit-text-size-adjust:100%;
+      text-size-adjust:100%;
+      scroll-behavior:smooth;
+    }
+
+    body{
+      min-height:100dvh;
+      margin:0;
+      font-family:'Prompt',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(circle at top left,rgba(16,185,129,.18),transparent 32rem),
+        radial-gradient(circle at bottom right,rgba(245,158,11,.14),transparent 30rem),
+        linear-gradient(180deg,#f8fafc 0%,#eef4f0 100%);
+      overscroll-behavior-y:none;
+    }
+
+    button,
+    input,
+    textarea,
+    select{
+      font-family:inherit;
+      font-size:16px;
+    }
+
+    button{
+      min-height:44px;
+      touch-action:manipulation;
+    }
+
+    input,
+    textarea{
+      -webkit-appearance:none;
+      appearance:none;
+    }
+
+    input[type="range"]{
+      -webkit-appearance:none;
+      appearance:none;
+      height:30px;
+      background:transparent;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track{
+      height:8px;
+      border-radius:999px;
+      background:linear-gradient(90deg,#ef4444 0%,#f59e0b 38%,#10b981 63%,#3b82f6 100%);
+      box-shadow:inset 0 1px 2px rgba(0,0,0,.12);
+    }
+
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width:24px;
+      height:24px;
+      margin-top:-8px;
+      border-radius:50%;
+      background:#ffffff;
+      border:4px solid #0f5132;
+      box-shadow:0 5px 14px rgba(15,81,50,.28);
+    }
+
+    input[type="range"]::-moz-range-track{
+      height:8px;
+      border-radius:999px;
+      background:linear-gradient(90deg,#ef4444 0%,#f59e0b 38%,#10b981 63%,#3b82f6 100%);
+    }
+
+    input[type="range"]::-moz-range-thumb{
+      width:20px;
+      height:20px;
+      border-radius:50%;
+      background:#ffffff;
+      border:4px solid #0f5132;
+      box-shadow:0 5px 14px rgba(15,81,50,.28);
+    }
+
+    .app-shell{
+      padding-bottom:calc(1.25rem + var(--safe-bottom));
+    }
+
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:40;
+      padding-top:var(--safe-top);
+      background:linear-gradient(135deg,#064e3b 0%,#0f5132 52%,#116149 100%);
+      box-shadow:0 12px 28px rgba(15,81,50,.22);
+    }
+
+    .glass-card{
+      background:rgba(255,255,255,.92);
+      border:1px solid rgba(226,232,240,.86);
+      box-shadow:0 18px 45px rgba(15,23,42,.06);
+      backdrop-filter:blur(18px);
+      -webkit-backdrop-filter:blur(18px);
+    }
+
+    .soft-card{
+      background:#ffffff;
+      border:1px solid rgba(226,232,240,.94);
+      box-shadow:0 12px 30px rgba(15,23,42,.055);
+    }
+
+    .field-input{
+      width:100%;
+      min-height:46px;
+      border:1px solid #dbe3ed;
+      border-radius:16px;
+      background:#ffffff;
+      color:#0f172a;
+      outline:none;
+      padding:.72rem .88rem;
+      transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease;
+    }
+
+    .field-input:focus{
+      border-color:#10b981;
+      box-shadow:0 0 0 4px rgba(16,185,129,.16);
+      background:#fbfffd;
+    }
+
+    .small-label{
+      display:block;
+      font-size:.76rem;
+      font-weight:600;
+      color:#64748b;
+      margin-bottom:.42rem;
+    }
+
+    .soil-card-active,
+    .mat-card-active{
+      border-color:#10b981!important;
+      background:#ecfdf5!important;
+      color:#065f46!important;
+      box-shadow:0 10px 24px rgba(16,185,129,.15)!important;
+    }
+
+    .choice-card{
+      min-height:76px;
+      border:1px solid #e2e8f0;
+      border-radius:18px;
+      background:#ffffff;
+      transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background-color .16s ease;
+    }
+
+    .choice-card:hover{
+      transform:translateY(-1px);
+      box-shadow:0 12px 26px rgba(15,23,42,.07);
+    }
+
+    .result-card{
+      position:relative;
+      overflow:hidden;
+    }
+
+    .result-card::before{
+      content:"";
+      position:absolute;
+      inset:0 0 auto 0;
+      height:4px;
+      background:linear-gradient(90deg,#10b981,#34d399,#f59e0b);
+    }
+
+    .chart-box{
+      height:260px;
+    }
+
+    .mobile-table{
+      -webkit-overflow-scrolling:touch;
+    }
+
+    .print-only{
+      display:none;
+    }
+
+    @media(max-width:640px){
+      .app-shell{
+        padding-left:.75rem;
+        padding-right:.75rem;
+      }
+      .topbar-title{
+        font-size:1.12rem;
+      }
+      .chart-box{
+        height:230px;
+      }
+      .soft-card,
+      .glass-card{
+        border-radius:1.15rem!important;
+      }
+    }
+
+    @media(print){
+      body{
+        background:#fff!important;
+      }
+      .topbar,
+      .no-print,
+      button,
+      input,
+      textarea{
+        display:none!important;
+      }
+      main{
+        display:block!important;
+        max-width:100%!important;
+        padding:0!important;
+      }
+      .soft-card,.glass-card{
+        box-shadow:none!important;
+        break-inside:avoid;
+        border:1px solid #cbd5e1!important;
+        margin-bottom:12px;
+      }
+      .print-only{
+        display:block!important;
+      }
+    }
+  </style>
+</head>
+
+<body class="antialiased selection:bg-emerald-500 selection:text-white">
+  <nav class="topbar text-white px-4 sm:px-6 py-3.5">
+    <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="bg-white text-[#0f5132] px-3 py-2 rounded-2xl font-bold topbar-title text-xl tracking-tight flex items-center gap-2 shadow-inner whitespace-nowrap">
+          <span>🌱 SoilDoc</span>
+          <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">TH v2.0</span>
+        </div>
+        <div class="hidden lg:block text-xs text-emerald-100/90 border-l border-emerald-300/30 pl-3 leading-relaxed">
+          แดชบอร์ดคำนวณวัสดุปรับปรุงดินกรด พร้อมงบประมาณและรายงานสรุป
+        </div>
+      </div>
+
+      <div class="no-print flex w-full md:w-auto items-center gap-2 overflow-x-auto pb-0.5 md:pb-0">
+        <button onclick="window.print()" class="shrink-0 bg-white/12 hover:bg-white/20 text-white text-sm font-medium py-2 px-4 rounded-2xl border border-white/15 transition-all flex items-center gap-2">
+          🖨️ พิมพ์รายงาน
+        </button>
+        <button onclick="resetAllData()" class="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium py-2 px-4 rounded-2xl shadow-sm transition-all">
+          🔄 เริ่มคำนวณใหม่
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="app-shell max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 xl:grid-cols-3 gap-5 lg:gap-6">
+    <section class="xl:col-span-1 space-y-5 lg:space-y-6">
+      <div class="glass-card rounded-3xl p-4 sm:p-5">
+        <h2 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <span class="bg-emerald-100 text-emerald-800 text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">1</span>
+          ข้อมูลแปลงและเนื้อดิน
+        </h2>
+
+        <div class="space-y-4">
+          <div>
+            <label class="small-label">ชื่อแปลง / ผู้ใช้</label>
+            <input type="text" id="plot_name" placeholder="เช่น แปลงผักอินทรีย์โซน A" class="field-input">
+          </div>
+
+          <div>
+            <label class="small-label">ขนาดพื้นที่เพาะปลูก</label>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <input type="number" inputmode="decimal" id="area_rai" min="0" placeholder="0" oninput="calculateTotalRai()" class="field-input text-center px-2">
+                <span class="text-[11px] text-center block text-slate-400 mt-1">ไร่</span>
+              </div>
+              <div>
+                <input type="number" inputmode="decimal" id="area_ngan" min="0" max="3" placeholder="0" oninput="calculateTotalRai()" class="field-input text-center px-2">
+                <span class="text-[11px] text-center block text-slate-400 mt-1">งาน</span>
+              </div>
+              <div>
+                <input type="number" inputmode="decimal" id="area_wa" min="0" max="399" placeholder="0" oninput="calculateTotalRai()" class="field-input text-center px-2">
+                <span class="text-[11px] text-center block text-slate-400 mt-1">ตร.วา</span>
+              </div>
+            </div>
+            <div class="mt-2 bg-emerald-50 text-emerald-700 rounded-2xl px-3 py-2 text-sm font-semibold text-right">
+              รวมพื้นที่ <span id="total_rai_txt">0.00</span> ไร่
+            </div>
+          </div>
+
+          <div>
+            <label class="small-label">ชนิดหรือเนื้อดินในพื้นที่</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" id="btn_soil_sand" onclick="setSoilType(150, 'btn_soil_sand')" class="soil-btn choice-card p-3 text-center flex flex-col items-center justify-center gap-1.5 text-xs">
+                <span class="text-xl">⏳</span><span class="font-semibold">ดินทราย</span>
+              </button>
+              <button type="button" id="btn_soil_loam" onclick="setSoilType(250, 'btn_soil_loam')" class="soil-btn choice-card p-3 text-center flex flex-col items-center justify-center gap-1.5 text-xs">
+                <span class="text-xl">🌾</span><span class="font-semibold">ดินร่วน</span>
+              </button>
+              <button type="button" id="btn_soil_clay" onclick="setSoilType(400, 'btn_soil_clay')" class="soil-btn choice-card p-3 text-center flex flex-col items-center justify-center gap-1.5 text-xs">
+                <span class="text-xl">🍯</span><span class="font-semibold">ดินเหนียว</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-3xl p-4 sm:p-5">
+        <h2 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <span class="bg-emerald-100 text-emerald-800 text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">2</span>
+          ระดับความเป็นกรด-ด่าง
+        </h2>
+        <div class="space-y-5">
+          <div>
+            <div class="flex justify-between items-center gap-2 mb-2">
+              <label class="text-sm font-semibold text-slate-600">ค่า pH ที่วัดได้จริง</label>
+              <span id="badge_ph" class="text-xs bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-full">ระบุค่า</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <input type="range" id="input_current_ph" min="3.5" max="8.5" step="0.1" value="4.5" oninput="updatePhLabels()" class="w-full">
+              <span id="txt_current_ph" class="text-base font-bold border border-slate-200 bg-slate-50 px-3 py-2 rounded-2xl w-16 text-center">4.5</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-sm font-semibold text-slate-600 mb-2 block">ค่า pH เป้าหมาย <span class="text-xs font-normal text-slate-400">แนะนำ 6.0 - 6.5</span></label>
+            <div class="flex items-center gap-3">
+              <input type="range" id="input_target_ph" min="5.5" max="7.5" step="0.1" value="6.5" oninput="updatePhLabels()" class="w-full">
+              <span id="txt_target_ph" class="text-base font-bold border border-slate-200 bg-slate-50 px-3 py-2 rounded-2xl w-16 text-center">6.5</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-3xl p-4 sm:p-5">
+        <h2 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <span class="bg-emerald-100 text-emerald-800 text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">3</span>
+          สารปรับสภาพและงบประมาณ
+        </h2>
+        <div class="space-y-4">
+          <div>
+            <label class="small-label">ชนิดสารปรับปรุงสภาพดินที่จะใช้</label>
+            <input type="hidden" id="select_material" value="109">
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" id="btn_mat_109" onclick="setMaterialType(109, 'btn_mat_109')" class="mat-btn choice-card p-3 text-center flex items-center justify-center text-xs font-semibold">🪨 โดโลไมท์</button>
+              <button type="button" id="btn_mat_179" onclick="setMaterialType(179, 'btn_mat_179')" class="mat-btn choice-card p-3 text-center flex items-center justify-center text-xs font-semibold">💨 ปูนขาว</button>
+              <button type="button" id="btn_mat_100" onclick="setMaterialType(100, 'btn_mat_100')" class="mat-btn choice-card p-3 text-center flex items-center justify-center text-xs font-semibold">🧱 หินปูนบด</button>
+              <button type="button" id="btn_mat_80" onclick="setMaterialType(80, 'btn_mat_80')" class="mat-btn choice-card p-3 text-center flex items-center justify-center text-xs font-semibold">🐚 ปูนมาร์ล</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="small-label">ขนาดกระสอบ (กก.)</label>
+              <input type="number" inputmode="decimal" id="bag_weight" value="50" oninput="calculateAll()" class="field-input text-center font-semibold">
+            </div>
+            <div>
+              <label class="small-label">ราคาต่อกระสอบ (บาท)</label>
+              <input type="number" inputmode="decimal" id="bag_price" value="180" oninput="calculateAll()" class="field-input text-center font-semibold">
+            </div>
+          </div>
+
+          <button type="button" onclick="saveToHistory()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm py-3 px-4 rounded-2xl shadow-lg shadow-emerald-200/60 transition-all flex items-center justify-center gap-2">
+            📥 บันทึกข้อมูลแปลงนี้ลงประวัติ
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="xl:col-span-2 space-y-5 lg:space-y-6">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div class="soft-card result-card rounded-3xl p-4">
+          <span class="text-[11px] uppercase font-bold text-slate-400 block mb-1">สถานภาพ pH</span>
+          <div id="res_status_title" class="text-base font-bold text-red-600">กรดจัดมาก</div>
+          <div id="res_status_sub" class="text-[11px] text-slate-400 mt-1 leading-tight">ฟอสฟอรัสถูกขัดขวาง</div>
+        </div>
+        <div class="soft-card result-card rounded-3xl p-4">
+          <span class="text-[11px] uppercase font-bold text-slate-400 block mb-1">ปริมาณที่แนะนำ</span>
+          <div class="text-xl font-bold text-emerald-600"><span id="res_total_weight">0</span> <span class="text-xs font-normal text-slate-400">กก.</span></div>
+          <div class="text-[11px] text-slate-400 mt-1"><span id="res_weight_per_rai">0</span> กก. / ไร่</div>
+        </div>
+        <div class="soft-card result-card rounded-3xl p-4">
+          <span class="text-[11px] uppercase font-bold text-slate-400 block mb-1">จำนวนกระสอบ</span>
+          <div class="text-xl font-bold text-amber-600"><span id="res_total_bags">0</span> <span class="text-xs font-normal text-slate-400">กระสอบ</span></div>
+          <div class="text-[11px] text-slate-400 mt-1">กระสอบละ <span id="res_bag_w_info">50</span> กก.</div>
+        </div>
+        <div class="soft-card result-card rounded-3xl p-4">
+          <span class="text-[11px] uppercase font-bold text-slate-400 block mb-1">งบประมาณ</span>
+          <div class="text-xl font-bold text-blue-600"><span id="res_total_cost">0</span> <span class="text-xs font-normal text-slate-400">บาท</span></div>
+          <div class="text-[11px] text-slate-400 mt-1">@ <span id="res_price_info">180</span> บาท / กระสอบ</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6">
+        <div class="soft-card rounded-3xl p-4 sm:p-5 lg:col-span-2">
+          <h3 class="text-sm font-bold text-slate-500 mb-3">📊 เปรียบเทียบปริมาณสารปรับสภาพตามชนิดเนื้อดิน</h3>
+          <div class="chart-box relative">
+            <canvas id="soilCompareChart"></canvas>
+          </div>
+        </div>
+
+        <div class="soft-card rounded-3xl p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-slate-500 mb-3">🧭 มาตรวัดความเปรี้ยว - หวาน</h3>
+            <div class="w-full h-4 rounded-full overflow-hidden flex text-[9px] text-center font-bold text-white mb-3 shadow-inner">
+              <div class="w-[30%] bg-red-500 flex items-center justify-center">กรด</div>
+              <div class="w-[40%] bg-emerald-500 flex items-center justify-center">กลาง</div>
+              <div class="w-[30%] bg-blue-500 flex items-center justify-center">ด่าง</div>
+            </div>
+            <div class="grid grid-cols-3 gap-1 text-[10px] text-center mb-4">
+              <div id="gauge_acid" class="p-2 rounded-xl bg-slate-50 text-slate-400">กรด<br><span class="text-[9px]">เติมปูน</span></div>
+              <div id="gauge_normal" class="p-2 rounded-xl bg-slate-50 text-slate-400">กลาง<br><span class="text-[9px]">เหมาะสม</span></div>
+              <div id="gauge_alkali" class="p-2 rounded-xl bg-slate-50 text-slate-400">ด่าง<br><span class="text-[9px]">ระวัง</span></div>
+            </div>
+          </div>
+          <div class="border-t border-dashed border-slate-200 pt-4 flex items-center gap-3">
+            <div class="text-3xl" id="evaluation_emoji">🤢</div>
+            <div class="text-xs leading-relaxed">
+              <span class="font-bold text-slate-700 block">ผลประเมินปฏิกิริยาดิน</span>
+              <span id="evaluation_text" class="text-slate-500">กรุณากรอกข้อมูลเพื่อประมวลผล</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="soft-card rounded-3xl p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div class="lg:col-span-2 space-y-3">
+          <h3 class="text-base font-semibold text-slate-800 flex items-center gap-2">🎓 คำแนะนำทางวิชาการและการปฏิบัติ</h3>
+          <ol class="text-sm text-slate-600 space-y-2 list-decimal pl-4 leading-relaxed">
+            <li><strong>ไถตากดินล่วงหน้า:</strong> ไถพลิกหน้าดินตากแดดไว้ประมาณ 5-7 วัน เพื่อช่วยลดปัญหาเชื้อโรคและก๊าซสะสม</li>
+            <li><strong>หว่านและคลุกเคล้า:</strong> หว่านวัสดุปรับปรุงดินให้ทั่วแปลง แล้วไถพรวนคลุกเคล้าลึกประมาณ 15 ซม. ขณะดินมีความชื้นพอเหมาะ</li>
+            <li><strong>บ่มดิน 15-30 วัน:</strong> ทิ้งช่วงให้วัสดุทำปฏิกิริยากับดินก่อนปลูกพืช เพื่อให้การปรับ pH มีประสิทธิภาพมากขึ้น</li>
+          </ol>
+        </div>
+        <div class="bg-amber-50 rounded-2xl p-4 border border-amber-200 text-amber-900 text-sm leading-relaxed space-y-1">
+          <div class="font-semibold text-amber-800 flex items-center gap-1">⚠️ ข้อควรระวัง</div>
+          <p>ไม่ควรหว่านปูนพร้อมปุ๋ยไนโตรเจนกลุ่มยูเรีย เพราะอาจเพิ่มการสูญเสียไนโตรเจนในรูปแอมโมเนีย ควรเว้นระยะก่อนใส่ปุ๋ยตามความเหมาะสม</p>
+          <p class="text-[10px] text-amber-600/80 text-right mt-1">อ้างอิงแนวทางทั่วไปด้านการจัดการดินกรด</p>
+        </div>
+      </div>
+
+      <div class="soft-card rounded-3xl p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-3">
+          <h3 class="text-base font-semibold text-slate-800 flex items-center gap-2">📁 ประวัติข้อมูลแปลง</h3>
+          <button onclick="clearHistoryTable()" class="no-print text-sm text-red-500 hover:text-red-700 transition-colors font-medium border border-red-100 rounded-2xl px-3 py-2 hover:bg-red-50">
+            🗑️ ล้างประวัติ
+          </button>
+        </div>
+        <div class="mobile-table overflow-x-auto border border-slate-100 rounded-2xl">
+          <table class="w-full text-left text-xs border-collapse min-w-[780px]">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-500">
+                <th class="p-3 font-medium">ชื่อแปลง / วันเวลา</th>
+                <th class="p-3 font-medium text-center">pH เดิม → เป้า</th>
+                <th class="p-3 font-medium text-center">พื้นที่</th>
+                <th class="p-3 font-medium">สารที่ใช้</th>
+                <th class="p-3 font-medium text-right">ปริมาณ</th>
+                <th class="p-3 font-medium text-center">กระสอบ</th>
+                <th class="p-3 font-medium text-right">รวมเงิน</th>
+                <th class="p-3 font-medium text-center no-print">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="history_tbody" class="divide-y divide-slate-100">
+              <tr id="history_empty_row">
+                <td colspan="8" class="p-8 text-center text-slate-400">
+                  <span class="block text-2xl mb-1">📂</span> ยังไม่มีประวัติบันทึกการคำนวณ
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let selectedSoilBuffer = 0;
+    let totalCalculatedRai = 0;
+    let chartInstance = null;
+    let historyData = [];
+
+    window.addEventListener('load', initializeApp);
+
+    function initializeApp(){
+      document.getElementById('plot_name').value = '';
+      document.getElementById('area_rai').value = '';
+      document.getElementById('area_ngan').value = '';
+      document.getElementById('area_wa').value = '';
+      document.getElementById('input_current_ph').value = 4.5;
+      document.getElementById('input_target_ph').value = 6.5;
+      document.getElementById('bag_weight').value = '50';
+      document.getElementById('bag_price').value = '180';
+      totalCalculatedRai = 0;
+      document.getElementById('total_rai_txt').innerText = '0.00';
+      setSoilType(250, 'btn_soil_loam');
+      setMaterialType(109, 'btn_mat_109');
+      initCompareChart();
+      updatePhLabels();
+      calculateAll();
+    }
+
+    function calculateTotalRai(){
+      const rai = parseFloat(document.getElementById('area_rai').value) || 0;
+      const ngan = parseFloat(document.getElementById('area_ngan').value) || 0;
+      const wa = parseFloat(document.getElementById('area_wa').value) || 0;
+      totalCalculatedRai = rai + (ngan / 4) + (wa / 400);
+      document.getElementById('total_rai_txt').innerText = totalCalculatedRai.toFixed(2);
+      calculateAll();
+    }
+
+    function setSoilType(bufferValue, activeBtnId){
+      selectedSoilBuffer = bufferValue;
+      document.querySelectorAll('.soil-btn').forEach(btn => btn.classList.remove('soil-card-active'));
+      document.getElementById(activeBtnId).classList.add('soil-card-active');
+      calculateAll();
+    }
+
+    function setMaterialType(cceValue, activeBtnId){
+      document.getElementById('select_material').value = cceValue;
+      document.querySelectorAll('.mat-btn').forEach(btn => btn.classList.remove('mat-card-active'));
+      document.getElementById(activeBtnId).classList.add('mat-card-active');
+      calculateAll();
+    }
+
+    function updatePhLabels(){
+      const curPh = parseFloat(document.getElementById('input_current_ph').value);
+      const tarPh = parseFloat(document.getElementById('input_target_ph').value);
+      document.getElementById('txt_current_ph').innerText = curPh.toFixed(1);
+      document.getElementById('txt_target_ph').innerText = tarPh.toFixed(1);
+      const badge = document.getElementById('badge_ph');
+      if(curPh < 5.0){
+        badge.innerText = 'กรดจัดมาก';
+        badge.className = 'text-xs bg-red-100 text-red-700 font-semibold px-2.5 py-1 rounded-full';
+      }else if(curPh < 6.0){
+        badge.innerText = 'กรดปานกลาง';
+        badge.className = 'text-xs bg-amber-100 text-amber-700 font-semibold px-2.5 py-1 rounded-full';
+      }else if(curPh <= 7.2){
+        badge.innerText = 'เป็นกลาง';
+        badge.className = 'text-xs bg-emerald-100 text-emerald-700 font-semibold px-2.5 py-1 rounded-full';
+      }else{
+        badge.innerText = 'ดินด่าง';
+        badge.className = 'text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-1 rounded-full';
+      }
+      calculateAll();
+    }
+
+    function calculateAll(){
+      const currentPh = parseFloat(document.getElementById('input_current_ph').value);
+      const targetPh = parseFloat(document.getElementById('input_target_ph').value);
+      const currentCce = parseFloat(document.getElementById('select_material').value);
+      const bagWeight = parseFloat(document.getElementById('bag_weight').value) || 50;
+      const bagPrice = parseFloat(document.getElementById('bag_price').value) || 0;
+      document.getElementById('res_bag_w_info').innerText = bagWeight;
+      document.getElementById('res_price_info').innerText = bagPrice;
+
+      if(currentPh >= targetPh){
+        setOutputsToZero();
+        document.getElementById('res_status_title').innerText = 'ปกติ / เป็นด่าง';
+        document.getElementById('res_status_sub').innerText = 'ไม่ต้องเติมปูนเพิ่ม';
+        document.getElementById('evaluation_emoji').innerText = '😎';
+        document.getElementById('evaluation_text').innerText = 'ดินอยู่ในช่วงที่ไม่จำเป็นต้องใช้วัสดุเพื่อลดสภาพกรดเพิ่มเติม';
+        resetGaugeHighlights();
+        document.getElementById(currentPh > 7.0 ? 'gauge_alkali' : 'gauge_normal').className = currentPh > 7.0 ? 'p-2 rounded-xl bg-blue-100 text-blue-800 font-semibold' : 'p-2 rounded-xl bg-emerald-100 text-emerald-800 font-semibold';
+        updateChartValues(0,0,0);
+        return;
+      }
+
+      const phDiff = targetPh - currentPh;
+      if(currentPh < 5.0){
+        document.getElementById('res_status_title').innerText = 'กรดจัดมาก';
+        document.getElementById('res_status_sub').innerText = 'ฟอสฟอรัสถูกขัดขวาง';
+        document.getElementById('evaluation_emoji').innerText = '🤢';
+        document.getElementById('evaluation_text').innerText = 'ดินกรดค่อนข้างจัด แนะนำปรับด้วยวัสดุปูนตามอัตราคำนวณ และควรเว้นช่วงก่อนปลูก';
+        resetGaugeHighlights();
+        document.getElementById('gauge_acid').className = 'p-2 rounded-xl bg-red-100 text-red-800 font-semibold';
+      }else{
+        document.getElementById('res_status_title').innerText = 'กรดอ่อน-ปานกลาง';
+        document.getElementById('res_status_sub').innerText = 'ควรปรับก่อนปลูก';
+        document.getElementById('evaluation_emoji').innerText = '🤨';
+        document.getElementById('evaluation_text').innerText = 'การปรับสภาพดินในช่วงนี้ช่วยเพิ่มโอกาสการดูดใช้ธาตุอาหารหลักได้ดีขึ้น';
+        resetGaugeHighlights();
+        document.getElementById('gauge_acid').className = 'p-2 rounded-xl bg-red-50 text-red-600 font-semibold';
+      }
+
+      const baseAmountPerRai = phDiff * selectedSoilBuffer;
+      const chosenMaterialFactor = 100 / currentCce;
+      const targetWeightPerRai = baseAmountPerRai * chosenMaterialFactor;
+      const grandTotalWeight = targetWeightPerRai * totalCalculatedRai;
+      const totalBags = Math.ceil(grandTotalWeight / bagWeight);
+      const totalCost = totalBags * bagPrice;
+
+      document.getElementById('res_total_weight').innerText = Math.ceil(grandTotalWeight).toLocaleString();
+      document.getElementById('res_weight_per_rai').innerText = Math.ceil(targetWeightPerRai).toLocaleString();
+      document.getElementById('res_total_bags').innerText = totalBags.toLocaleString();
+      document.getElementById('res_total_cost').innerText = totalCost.toLocaleString();
+
+      updateChartValues(
+        Math.ceil((phDiff * 150 * chosenMaterialFactor) * totalCalculatedRai),
+        Math.ceil((phDiff * 250 * chosenMaterialFactor) * totalCalculatedRai),
+        Math.ceil((phDiff * 400 * chosenMaterialFactor) * totalCalculatedRai)
+      );
+    }
+
+    function setOutputsToZero(){
+      document.getElementById('res_total_weight').innerText = '0';
+      document.getElementById('res_weight_per_rai').innerText = '0';
+      document.getElementById('res_total_bags').innerText = '0';
+      document.getElementById('res_total_cost').innerText = '0';
+    }
+
+    function resetGaugeHighlights(){
+      document.getElementById('gauge_acid').className = 'p-2 rounded-xl bg-slate-50 text-slate-400';
+      document.getElementById('gauge_normal').className = 'p-2 rounded-xl bg-slate-50 text-slate-400';
+      document.getElementById('gauge_alkali').className = 'p-2 rounded-xl bg-slate-50 text-slate-400';
+    }
+
+    function initCompareChart(){
+      const canvas = document.getElementById('soilCompareChart');
+      if(chartInstance){ chartInstance.destroy(); chartInstance = null; }
+      chartInstance = new Chart(canvas.getContext('2d'),{
+        type:'bar',
+        data:{
+          labels:['ดินทราย','ดินร่วน','ดินเหนียว'],
+          datasets:[{
+            label:'ปริมาณวัสดุปรับปรุงดิน (กก.)',
+            data:[0,0,0],
+            backgroundColor:['rgba(245,158,11,.2)','rgba(16,185,129,.8)','rgba(239,68,68,.2)'],
+            borderColor:['#f59e0b','#10b981','#ef4444'],
+            borderWidth:1.5,
+            borderRadius:10
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{titleFont:{family:'Prompt'},bodyFont:{family:'Prompt'}}},
+          scales:{
+            y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{font:{size:11,family:'Prompt'}}},
+            x:{grid:{display:false},ticks:{font:{size:12,weight:'bold',family:'Prompt'}}}
+          }
+        }
+      });
+    }
+
+    function updateChartValues(sand,loam,clay){
+      if(!chartInstance) return;
+      chartInstance.data.datasets[0].data = [sand,loam,clay];
+      chartInstance.data.datasets[0].backgroundColor = [
+        selectedSoilBuffer === 150 ? 'rgba(245,158,11,.82)' : 'rgba(245,158,11,.20)',
+        selectedSoilBuffer === 250 ? 'rgba(16,185,129,.82)' : 'rgba(16,185,129,.20)',
+        selectedSoilBuffer === 400 ? 'rgba(239,68,68,.82)' : 'rgba(239,68,68,.20)'
+      ];
+      chartInstance.update();
+    }
+
+    function getMaterialText(){
+      const value = document.getElementById('select_material').value;
+      if(value === '179') return 'ปูนขาว/ปูนเผา';
+      if(value === '100') return 'หินปูนบด';
+      if(value === '80') return 'ปูนมาร์ล';
+      return 'โดโลไมท์';
+    }
+
+    function saveToHistory(){
+      const plotName = document.getElementById('plot_name').value.trim() || 'ไม่ได้ระบุชื่อแปลง';
+      const netWeight = document.getElementById('res_total_weight').innerText;
+      if(totalCalculatedRai <= 0 || netWeight === '0'){
+        alert('กรุณาระบุขนาดพื้นที่และตั้งค่าช่วง pH ที่ต้องการแก้ไขก่อนบันทึกประวัติ');
+        return;
+      }
+      const now = new Date();
+      const timestamp = `${now.toLocaleDateString('th-TH')} ${now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}`;
+      historyData.push({
+        title:`${plotName} (${timestamp})`,
+        phFlow:`${parseFloat(document.getElementById('input_current_ph').value).toFixed(1)} → ${parseFloat(document.getElementById('input_target_ph').value).toFixed(1)}`,
+        areaStr:`${totalCalculatedRai.toFixed(2)} ไร่`,
+        mat:getMaterialText(),
+        weight:netWeight + ' กก.',
+        bags:document.getElementById('res_total_bags').innerText + ' กระสอบ',
+        cost:document.getElementById('res_total_cost').innerText + ' บาท'
+      });
+      renderHistoryTable();
+    }
+
+    function renderHistoryTable(){
+      const tbody = document.getElementById('history_tbody');
+      const emptyRow = document.getElementById('history_empty_row');
+      tbody.querySelectorAll('.log-row').forEach(row => row.remove());
+      if(historyData.length === 0){ emptyRow.style.display = 'table-row'; return; }
+      emptyRow.style.display = 'none';
+      historyData.forEach((item,index) => {
+        const tr = document.createElement('tr');
+        tr.className = 'log-row hover:bg-slate-50/80 transition-colors text-slate-700';
+        tr.innerHTML = `
+          <td class="p-3 font-medium text-slate-900">${item.title}</td>
+          <td class="p-3 text-center text-emerald-700 font-bold bg-emerald-50/30">${item.phFlow}</td>
+          <td class="p-3 text-center">${item.areaStr}</td>
+          <td class="p-3 text-slate-600">${item.mat}</td>
+          <td class="p-3 text-right font-bold text-slate-900">${item.weight}</td>
+          <td class="p-3 text-center">${item.bags}</td>
+          <td class="p-3 text-right font-bold text-blue-600">${item.cost}</td>
+          <td class="p-3 text-center no-print"><button onclick="deleteHistoryRow(${index})" class="text-red-500 hover:text-red-700 p-2 rounded-xl hover:bg-red-50 transition-all" title="ลบรายการนี้">🗑️</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function deleteHistoryRow(index){ historyData.splice(index,1); renderHistoryTable(); }
+    function clearHistoryTable(){ historyData = []; renderHistoryTable(); }
+    function resetAllData(){ clearHistoryTable(); initializeApp(); }
+  </script>
+</body>
+</html>
